@@ -15,7 +15,7 @@ class winlib_DLLFail():
         return self.code
     def getErrorMessage(self):
         if self.code == DLL_FAIL_LOAD:
-            print("DLL<" + self.dllnamee + "> Failed to load. It either could not be found or is corrupt.")
+            print("DLL<" + self.dllname + "> Failed to load. It either could not be found or is corrupt.")
         else:
             print("Function<" + self.funcname + "> is not a valid function in the dll <" + self.dllname + ">.")
 
@@ -58,7 +58,7 @@ class winlib_Window():
             return r
 
     def CallWindowFuncStr(self, name, *params, dll="user32", strfunc=False):
-        handle = cdll.LoadLibrary(dll)
+        handle = c.cdll.LoadLibrary(dll)
         print(params)
         if strfunc:
             name += "W"
