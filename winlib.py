@@ -1,4 +1,5 @@
 import ctypes as c
+from ctypes.wintypes import *
 user32 = c.windll.user32
 kernel32 = c.windll.kernel32
 
@@ -18,7 +19,7 @@ class winlib_DLLFail():
             print("DLL<" + self.dllname + "> Failed to load. It either could not be found or is corrupt.")
         else:
             print("Function<" + self.funcname + "> is not a valid function in the dll <" + self.dllname + ">.")
-
+            
 class winlib_Window():
     def __init__(self, handle):
         self.handle = handle
@@ -67,9 +68,30 @@ class winlib_Window():
 
     def getThreadId(self):
         return user32.GetWindowThreadProcessId(self.handle, None)
+
+    def SetHook(self, hooktype, func):
+        return SetHook(hooktype, func, self.getThreadId())
     
     def __str__(self):
         return "winlib.winlib_Window object: HWND(" + str(self.getHandle()) + "), TITLE(\"" + self.title + "\")"
+
+_keyBoardState = c.ARRAY(BYTE, 256)()
+
+def ToAscii(virtKey, scanCode, flags):
+    buff = c.create_unicode_buffer(3)
+    user32.GetKeyboardState(_keyBoardState)
+    user32.ToUnicodeEx(virtKey, scanCode, _keyBoardState, buff, 3, flags, GetKeyboardLayout(0))
+    return buff.value
+
+def GetKeyboardLayout(threadId):
+    return user32.GetKeyboardLayout(threadId)
+
+def SetHook(idHook : int, func, dwThreadId):
+    return user32.SetWindowsHookExA(idHook, func, kernel32.GetModuleHandleW(None), dwThreadId)
+
+def GetHookFuncPointer(func):
+    type = c.CFUNCTYPE(c.c_int, c.c_int, c.c_int, c.POINTER(c.c_void_p))
+    return type(func)
 
 def GetFunc_DLL(funcname, dll="user32"):
     
