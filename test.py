@@ -1,31 +1,27 @@
 import winlib
 import keyboard_funcs as k
 
-def HookFunc(ncode, wparam, lparam):
-    global HOOK
-
+def HookFunc(self, ncode, wparam, lparam):
     if wparam != 0x0100:
-        return winlib.user32.CallNextHookEx(HOOK, ncode, wparam, lparam)
+        return
 
-    if lparam[0] == 0x25:
-        user32.UninstallWindowsHookEx(HOOK)
+    if lparam[0] == k.VK_F2:
+        self.UninstallHook()
         HOOK = 0
 
-    caps = False
-    if k.GetKeyState(k.VK_SHIFT):
-        caps = not caps
-    if k.GetKeyState(k.VK_CONTROL):
-        caps = not caps
-        
+    shift = k.GetKeyState(k.VK_SHIFT)[0]
+    caps_lock = k.GetKeyState(k.VK_CAPITAL)[1]
+    caps = shift ^ caps_lock
+    
     char = k.ToAscii(lparam[0], lparam[1], lparam[2])
     if caps:
         char = char.upper()
-    print(char, end="")
-    return winlib.user32.CallNextHookEx(HOOK, ncode, wparam, lparam)
+    print(bin(caps_lock) + ", " + bin(shift))
+    return
 
-func = winlib.GetHookFuncPointer(HookFunc)
-HOOK = winlib.SetHook(13, func, 0)
 
+HOOK = winlib.HookFunction(HookFunc, 13)
+HOOK.HookIntoThread(0)
 if HOOK:
     print("Installed. ")
     msg = winlib.c.wintypes.MSG()

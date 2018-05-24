@@ -68,25 +68,27 @@ class winlib_Window():
 
     def getThreadId(self):
         return user32.GetWindowThreadProcessId(self.handle, None)
-
-    def SetHook(self, hooktype, func):
-        return SetHook(hooktype, func, self.getThreadId())
     
     def __str__(self):
         return "winlib.winlib_Window object: HWND(" + str(self.getHandle()) + "), TITLE(\"" + self.title + "\")"
 
-_keyBoardState = c.ARRAY(BYTE, 256)()
+class HookFunction:
+    def __init__(self, func, idHook):
+        self.idHook = idHook
+        self.func = func
 
-def ToAscii(virtKey, scanCode, flags):
-    buff = c.create_unicode_buffer(3)
-    user32.GetKeyboardState(_keyBoardState)
-    user32.ToUnicodeEx(virtKey, scanCode, _keyBoardState, buff, 3, flags, GetKeyboardLayout(0))
-    return buff.value
+    def HookIntoThread(self, dwThreadId):
+        self.c_func = GetHookFuncPointer(self.__hookProc)
+        self.hook = SetThreadHook_Raw(self.idHook, self.c_func, dwThreadId)
 
-def GetKeyboardLayout(threadId):
-    return user32.GetKeyboardLayout(threadId)
-
-def SetHook(idHook : int, func, dwThreadId):
+    def UninstallHook(self):
+        user32.UninstallWindowsHookEx(self.hook)
+    
+    def __hookProc(self, ncode, wparam, lparam):
+        self.func(self, ncode, wparam, lparam)
+        return user32.CallNextHookEx(self.hook, ncode, wparam, lparam)
+    
+def SetThreadHook_Raw(idHook : int, func, dwThreadId):
     return user32.SetWindowsHookExA(idHook, func, kernel32.GetModuleHandleW(None), dwThreadId)
 
 def GetHookFuncPointer(func):
