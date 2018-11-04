@@ -1,6 +1,8 @@
 import ctypes as c
 from ctypes.wintypes import BYTE
 
+VirtualToScan = lambda vk: user32.MapVirtualKeyA(vk, 0)
+
 user32 = c.windll.user32
 kernel32 = c.windll.kernel32
 
@@ -16,7 +18,7 @@ def ToAscii(virtKey, scanCode, flags):
     return buff.value
 
 def ToAscii_LPARAM(lparam):
-    return ToAscii(lparam[0], lparm[1], lparam[2])
+    return ToAscii(lparam[0], lparam[1], lparam[2])
 
 def GetKeyState(virtkey):
     val = user32.GetKeyState(virtkey)
@@ -26,4 +28,4 @@ def GetKeyboardLayout(threadId):
     return user32.GetKeyboardLayout(threadId)
 
 def ParseLPARAM_keybd(lparam):
-    return lparam & 0x0000ffff, lparam & 0x00ff0000, bool(GetBit(24)), bool(GetBit(29)), bool(GetBit(30)), bool(GetBit(31))
+    return lparam & 0x0000ffff, lparam & 0x00ff0000, bool(GetBit(lparam, 24)), bool(GetBit(lparam, 29)), bool(GetBit(lparam, 30)), bool(GetBit(lparam, 31))
