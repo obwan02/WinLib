@@ -91,16 +91,16 @@ def simulate_keyhit(virtualCode, duration=0.02):
 	user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 2, 0)
 	sleep(duration / 2)
 
-def type_string(string, end="\n"):
+def type_string(string, end="\n", interval=0.02):
 	for char in string:
 		c = mapKeys[char.lower()]
 		if char.lower() != char:
 			#is a capital letter
-			simulate_keyhit(VK_CAPITAL)
-			simulate_keyhit(mapKeys[char.lower()]);
-			simulate_keyhit(VK_CAPITAL);
+			simulate_keyhit(VK_CAPITAL, duration=interval)
+			simulate_keyhit(mapKeys[char.lower()], duration=interval);
+			simulate_keyhit(VK_CAPITAL, duration=interval);
 		else:
-			simulate_keyhit(mapKeys[char.lower()]);
-	simulate_keyhit(mapKeys[end.lower()])
+			simulate_keyhit(mapKeys[char.lower()], duration=interval);
+	simulate_keyhit(mapKeys[end.lower()], duration=interval)
 
 
