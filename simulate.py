@@ -1,9 +1,10 @@
 from ctypes import *
 from time import sleep
-from winlib.defs import *
+from ctypes.wintypes import POINT
 
 user32 = windll.user32
 VirtualToScan = lambda vk: user32.MapVirtualKeyA(vk, 0)
+CharToVirtual = lambda c: user32.VkKeyScanW(c)
 GetMessageExtraInfo = lambda: user32.GetMessageExtraInfo()
 
 LEFTDOWN   = 0x0002
@@ -21,86 +22,67 @@ XUP        = 0x0100
 WHEEL      = 0x0800
 HWHEEL     = 0x01000
 
-mapKeys = {
-	"a" : KEY_A,
-	"b" : KEY_B,
-	"c" : KEY_C,
-	"d" : KEY_D,
-	"e" : KEY_E,
-	"f" : KEY_F,
-	"g" : KEY_G,
-	"h" : KEY_H,
-	"i" : KEY_I,
-	"j" : KEY_J,
-	"k" : KEY_K,
-	"l" : KEY_L,
-	"m" : KEY_M,
-	"n" : KEY_N,
-	"o" : KEY_O,
-	"p" : KEY_P,
-	"q" : KEY_Q,
-	"r" : KEY_R,
-	"s" : KEY_S,
-	"t" : KEY_T,
-	"u" : KEY_U,
-	"v" : KEY_V,
-	"w" : KEY_W,
-	"x" : KEY_X,
-	"y" : KEY_Y,
-	"z" : KEY_Z,
-	"\t" : VK_TAB,
-	"\n" : VK_RETURN,
-	" " : VK_SPACE,
-	"0" : KEY_0,
-	"1" : KEY_1,
-	"2" : KEY_2,
-	"3" : KEY_3,
-	"4" : KEY_4,
-	"5" : KEY_5,
-	"6" : KEY_6,
-	"7" : KEY_7,
-	"8" : KEY_8,
-	"9" : KEY_9,
-
-	"-" : VK_SUBTRACT,
-	"'" : VK_OEM_7
-}
+def mouse_pos():
+    p = POINT()
+    user32.GetCursorPos(byref(p))
+    return (p.x, p.y)
 
 def mouse_move(x, y):
-	user32.SetCursorPos(x, y)
+    user32.SetCursorPos(x, y)
 
 def mouse_event(_type, x=0, y=0, data=0):
-	if _type == ABSOLUTE:
-		x *= 65535
-		y *= 65535
-	user32.mouse_event(_type, int(x), int(y), int(data), GetMessageExtraInfo())
+    if _type == ABSOLUTE:
+        x *= 65535
+        y *= 65535
+    user32.mouse_event(_type, int(x), int(y), int(data), GetMessageExtraInfo())
+
+def mouse_click(x=-1, y=-1, duration=0.02):
+    yeet = False
+    if x == -1:
+        x = mouse_pos()[0]
+    if y == -1:
+        y = mouse_pos()[1]
+    if x != -1 or y != -1:
+        mouse_move(x, y)
+        
+    mouse_event(LEFTDOWN, x=x, y=y)
+    sleep(duration / 2)
+    mouse_event(LEFTUP, x=x, y=y)
+    sleep(duration / 2)
 
 #1 is one wheel scroll
 def mouse_scroll(amount):
-	mouse_event(WHEEL, 0, 0, int(amount * 120))
+    mouse_event(WHEEL, 0, 0, int(amount * 120))
 
 def key_down(virtualCode):
-	user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 0, 0)
+    user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 0, 0)
 
 def key_up(virtualCode):
-	user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 2, 0)
+    user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 2, 0)
 
 def simulate_keyhit(virtualCode, duration=0.02):
-	user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 0, 0)
-	sleep(duration / 2);
-	user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 2, 0)
-	sleep(duration / 2)
+    user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 0, 0)
+    sleep(duration / 2);
+    user32.keybd_event(virtualCode, VirtualToScan(virtualCode), 2, 0)
+    sleep(duration / 2)
 
 def type_string(string, end="\n", interval=0.02):
-	for char in string:
-		c = mapKeys[char.lower()]
-		if char.lower() != char:
-			#is a capital letter
-			simulate_keyhit(VK_CAPITAL, duration=interval)
-			simulate_keyhit(mapKeys[char.lower()], duration=interval);
-			simulate_keyhit(VK_CAPITAL, duration=interval);
-		else:
-			simulate_keyhit(mapKeys[char.lower()], duration=interval);
-	simulate_keyhit(mapKeys[end.lower()], duration=interval)
+    for char in string:
+        b = bytes(char, 'utf-8')
+        char = c_char(b)
+        result = CharToVirtual(char)
 
+        virtual = result & 0xff
+        special = result & 0x00ff
+
+        if special == 1: key_down(0x10)
+        if special == 2: key_down(0x11)        
+        if special == 4: key_down(0x12)
+        
+        simulate_keyhit(virtual, duration=interval)
+
+        if special == 4: key_up(0x12)
+        if special == 2: key_up(0x11)        
+        if special == 1: key_up(0x10)
+            
 
