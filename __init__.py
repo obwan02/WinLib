@@ -1,5 +1,6 @@
 import ctypes as c
 from ctypes.wintypes import *
+from os import getppid
 
 user32 = c.windll.user32
 kernel32 = c.windll.kernel32
@@ -50,7 +51,7 @@ class winlib_Window():
         user32.EnumChildWindows(self.handle, functype(_enumProc), 0)
         return arr
 
-    def getHandle(self):
+    def getHandleValue(self):
         p = c.cast(c.byref(self.handle), c.POINTER(c.c_long))
         return p.contents.value
 
@@ -68,7 +69,7 @@ class winlib_Window():
             self._childIndex += 1
             return r
 
-    def CallFunc(self, name, *params, dll="user32", strfunc=False):
+    def callFunc(self, name, *params, dll="user32", strfunc=False):
         handle = c.cdll.LoadLibrary(dll)
         print(params)
         if strfunc:
@@ -76,29 +77,53 @@ class winlib_Window():
         func = handle.__getattr__(name)
         func(self.handle, *params)
 
+    def close(self):
+        fail = user32.PostMessageW(self.handle, 0x0010, 0, 0)
+        return fail != 0
+
     def getThreadId(self):
         return user32.GetWindowThreadProcessId(self.handle, None)
     
-    def __str__(self):
-        return "winlib.winlib_Window object: HWND(" + str(self.getHandle()) + "), TITLE(\"" + self.title + "\")"
+    def getProcessId(self):
+        processId = DWORD()
+        user32.GetWindowThreadProcessId(self.handle, c.pointer(processId))
+        return processId.value
 
+    def bringToTop(self):
+        user32.SetWindowPos(self.handle, -1, 0, 0, 100, 100, 0x0001)
+
+    def focus(self):
+        user32.SetFocus(self.handle)
+
+    def maximise(self):
+        user32.PostMessageA(self.handle, 0x0112, 0xF030, 0)
+
+    def minimise(self):
+        user32.PostMessageA(self.handle, 0x0112, 0xF020, 0)
+
+    def __str__(self):
+        return "winlib.winlib_Window object: HWND(" + str(self.getHandleValue()) + "), TITLE(\"" + self.title + "\")"
+""""
+The function passed to hook must be:
+def <name>(self, ncode, wparam, lparam):
+"""
 class HookFunction:
     def __init__(self, func, idHook):
         self.idHook = idHook
         self.func = func
 
-    def Hook(self, dwThreadId):
+    def hook(self, dwThreadId):
         self.c_func = GetHookFuncPointer(self.__hookProc)
-        self.hook = SetThreadHook_Raw(self.idHook, self.c_func, dwThreadId)
+        self.__hook = SetThreadHook_Raw(self.idHook, self.c_func, dwThreadId)
 
-    def Unhook(self):
-        if self.hook == -1: return
-        user32.UnhookWindowsHookEx(self.hook)
-        self.hook = -1
+    def unhook(self):
+        if self.__hook == -1: return
+        user32.UnhookWindowsHookEx(self.__hook)
+        self.__hook = -1
     
     def __hookProc(self, ncode, wparam, lparam):
         self.func(self, ncode, wparam, lparam)
-        return user32.CallNextHookEx(self.hook, ncode, wparam, lparam)
+        return user32.CallNextHookEx(self.__hook, ncode, wparam, lparam)
     
 def SetThreadHook_Raw(idHook : int, func, dwThreadId):
     return user32.SetWindowsHookExA(idHook, func, kernel32.GetModuleHandleW(None), dwThreadId)
@@ -154,12 +179,13 @@ def SearchWindows(name : str):
     ftype = c.WINFUNCTYPE(c.c_bool, c.POINTER(c.c_int), c.POINTER(c.c_int))
     user32.EnumWindows(ftype(_enumProc), 0)
     
-    if len(potentials) > 1:
-        return tuple(potentials)
-    elif len(potentials) == 1:
-        return potentials[0]
-    else:
-        return None
+    return tuple(potentials)
 
 def GetCurrentThreadId():
     return kernel32.GetCurrentThreadId()
+
+def GetCurrentProcessId():
+    return kernel32.GetCurrentProcessId()
+
+def GetCurrentParentProcessId():
+    return getppid()
